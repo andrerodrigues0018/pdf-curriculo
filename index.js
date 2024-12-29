@@ -26,7 +26,7 @@ app.post('/upload-pdf', async (req, res) => {
 
         // Retornar o texto extraído
         const API_KEY = process.env.API_KEY;
-        const prompt = `Conseguiria me passar informações sobre esse curriculo?
+        const prompt = `Extraia um JSON com informações desse curriculo
 
           - Nome do candidato
 
@@ -39,7 +39,7 @@ app.post('/upload-pdf', async (req, res) => {
           - Experiencias
 
           - Educação
-           **Exemplo de saída correta**: ` + "```json"+`
+           **Exemplo de saída correta é apenas o JSON, exemplo: **: ` + "```json"+`
           {
             "nome": "Fulano de Tal",
             "telefone": "(11) 99999-9999",
