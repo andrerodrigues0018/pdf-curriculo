@@ -2,9 +2,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const pdfParse = require('pdf-parse'); // Para extrair texto do PDF
+const cors = require('cors'); 
 require('dotenv').config();
 // Configurar o app Express
 const app = express();
+app.use(cors());
 
 // Configurar body-parser para uploads binários
 app.use(bodyParser.raw({ type: 'application/pdf', limit: '10mb' })); // Limite de 10MB para o PDF
@@ -17,7 +19,7 @@ app.post('/upload-pdf', async (req, res) => {
             return res.status(400).send('Nenhum arquivo enviado.');
         }
 
-        console.log('Arquivo recebido:', req.body); // Detalhes do arquivo enviado
+        // console.log('Arquivo recebido:', req.body); // Detalhes do arquivo enviado
 
         // Extrair texto do PDF
         const data = await pdfParse(req.body);
@@ -36,7 +38,22 @@ app.post('/upload-pdf', async (req, res) => {
 
           - Experiencias
 
-          - Educação`;
+          - Educação
+          porém em formato JSON, como por exemplo:
+          {
+            "nome": "Fulano de Tal",
+            "telefone": "(11) 99999-9999",
+            "email": "fulano@example,
+            "posicao": "Desenvolvedor Full Stack",
+            "experiencias": [
+              { titulo: "Desenvolvedor Front-end", empresa: "Empresa X", periodo: "2019-2021", local: "São Paulo" },
+              { titulo: "Desenvolvedor Back-end", empresa: "Empresa Y", periodo: "2017-2019", local: "São Paulo" }
+            ],
+            "educacao": [
+              { curso: "Ciência da Computação", instituicao: "Universidade Z", data: "2013-2017" }
+            ]
+          }
+          ` ;
     
         const payload = {
           model: "gpt-4o-mini",
