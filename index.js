@@ -39,7 +39,7 @@ app.post('/upload-pdf', async (req, res) => {
           - Experiencias
 
           - Educação
-          porém em formato JSON, como por exemplo:
+           **Exemplo de saída correta**: ` + "```json"+`
           {
             "nome": "Fulano de Tal",
             "telefone": "(11) 99999-9999",
@@ -79,12 +79,19 @@ app.post('/upload-pdf', async (req, res) => {
         }
 
         const dataResponse = await response.json();
-        const summary = dataResponse.choices[0].message.content;
+        const summary = transformTextToJson(dataResponse.choices[0].message.content);
         res.send(summary);
     } catch (err) {
         res.status(500).send({ error: 'Erro ao processar o PDF', details: err.message });
     }
 });
+
+function transformTextToJson(part) {
+
+  const jsonContent = JSON.parse(part.replace(/```json\n|\n```/g, ''));
+  return jsonContent;
+}
+
 
 // Configurar porta
 const PORT = 3000;
