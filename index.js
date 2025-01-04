@@ -2,8 +2,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const pdfParse = require('pdf-parse'); // Para extrair texto do PDF
+const axios = require('axios');
+const { Client, GatewayIntentBits } = require('discord.js');
 const cors = require('cors'); 
 require('dotenv').config();
+
+
+
 // Configurar o app Express
 const app = express();
 app.use(cors());
@@ -84,6 +89,50 @@ app.post('/upload-pdf', async (req, res) => {
     } catch (err) {
         res.status(500).send({ error: 'Erro ao processar o PDF', details: err.message });
     }
+});
+
+app.get('/hunteds/online', async (req, res) => {
+  const discordClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+  const discordToken = process.env.DISCORD_API_KEY;; // Replace with your Discord bot token
+  const discordChannelId = '1324898801776857199'; // Replace with your Discord channel ID
+
+  discordClient.once('ready', () => {
+    console.log('Discord bot is ready!');
+  });
+
+  discordClient.login(discordToken);
+
+  try {
+    // const playersToCheck = ['Frost Club', 'Pablo Alencar', 'Cheloko Rawexp']; // Replace with actual player names
+    const response = await axios.get(`https://api.tibiadata.com/v4/guild/Eagle Eye`);
+    const onlinePlayers = response.data.guild.members;
+    const TibiaClass = { 'Elite Knight': '🛡️', 'Master Sorcerer': '🔥' , 'Royal Paladin': '🏹' , 'Elder Druid': '🌱' }; 
+    const newOnline = [];
+    onlinePlayers.sort((a, b) => b.level - a.level);
+
+    for (const player of onlinePlayers) {
+      if (player.level < 1500 && player.status === 'online') {
+
+          newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
+      }
+    }
+
+    // Send message to Discord for each new online player
+    const channel = await discordClient.channels.fetch(discordChannelId);
+    // for (const player of newOnline) {
+    await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1500**`);
+
+    const chunkSize = 45;
+    for (let i = 0; i < newOnline.length; i += chunkSize) {
+      const chunk = newOnline.slice(i, i + chunkSize);
+      await channel.send("```" + `${chunk.join(' ')}` + "```");
+    }
+
+    res.json({ new_online: newOnline });
+  } catch (error) {
+    console.error('Error fetching world data', error);
+    res.status(500).send('Error fetching world data');
+  }
 });
 
 function transformTextToJson(part) {
