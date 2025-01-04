@@ -111,7 +111,7 @@ async function fetchAndSendOnlinePlayers() {
     onlinePlayers.sort((a, b) => b.level - a.level);
 
     for (const player of onlinePlayers) {
-      if (player.level < 1500 && player.status === 'online') {
+      if (player.level < 1000 && player.status === 'online') {
 
           newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
       }
@@ -120,7 +120,7 @@ async function fetchAndSendOnlinePlayers() {
     // Send message to Discord for each new online player
     const channel = await discordClient.channels.fetch(discordChannelId);
     // for (const player of newOnline) {
-    await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1500**`);
+    await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1000**`);
 
     const chunkSize = 45;
     for (let i = 0; i < newOnline.length; i += chunkSize) {
