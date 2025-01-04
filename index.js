@@ -133,7 +133,7 @@ async function fetchAndSendOnlinePlayers() {
 }
 
 // Schedule the cron job to run every 5 minutes
-cron.schedule('*/5 * * * *', fetchAndSendOnlinePlayers);
+// cron.schedule('*/1 * * * *', fetchAndSendOnlinePlayers);
 
 // Your existing route
 app.get('/hunteds/online', async (req, res) => {
