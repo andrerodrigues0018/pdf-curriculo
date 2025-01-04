@@ -6,7 +6,7 @@ const axios = require('axios');
 const { Client, GatewayIntentBits } = require('discord.js');
 const cors = require('cors'); 
 require('dotenv').config();
-
+const cron = require('node-cron');
 
 
 // Configurar o app Express
@@ -91,7 +91,7 @@ app.post('/upload-pdf', async (req, res) => {
     }
 });
 
-app.get('/hunteds/online', async (req, res) => {
+async function fetchAndSendOnlinePlayers() {
   const discordClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
   const discordToken = process.env.DISCORD_API_KEY;; // Replace with your Discord bot token
   const discordChannelId = '1324898801776857199'; // Replace with your Discord channel ID
@@ -127,12 +127,18 @@ app.get('/hunteds/online', async (req, res) => {
       const chunk = newOnline.slice(i, i + chunkSize);
       await channel.send("```" + `${chunk.join(' ')}` + "```");
     }
-
-    res.json({ new_online: newOnline });
   } catch (error) {
-    console.error('Error fetching world data', error);
-    res.status(500).send('Error fetching world data');
+    console.error('Error fetching character data:', error);
   }
+}
+
+// Schedule the cron job to run every 5 minutes
+cron.schedule('*/5 * * * *', fetchAndSendOnlinePlayers);
+
+// Your existing route
+app.get('/hunteds/online', async (req, res) => {
+  await fetchAndSendOnlinePlayers();
+  res.send('Online players fetched and sent to Discord.');
 });
 
 function transformTextToJson(part) {
