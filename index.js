@@ -130,7 +130,8 @@ async function fetchAndSendOnlinePlayers() {
     sendDiscordOnlineMessage(newOnline, discordClient)
     await sendDiscordDeathsMessage(newDeaths, discordClient)
   } catch (error) {
-    console.error('Error fetching character data:', error);
+    console.error('Error fetching character data:', error.message);
+    console.error('Error details:', error.response ? error.response.data : error);
   }
 }
 
