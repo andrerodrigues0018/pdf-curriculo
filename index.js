@@ -208,7 +208,7 @@ async function getCharacterDeaths(characterName){
           level: death.level,
           reason: death.reason,
         }
-        // await deathList.push(deathFormatted)
+        await deathList.push(deathFormatted)
         await redis.hmset(deathKey, deathFormatted);
       }
     }
