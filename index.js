@@ -128,7 +128,7 @@ async function fetchAndSendOnlinePlayers() {
           }
         }
 
-        if (player.level < 1000 && player.status === 'online') {
+        if (player.status === 'online') {
           newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
         }
       });
