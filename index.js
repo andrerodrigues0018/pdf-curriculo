@@ -6,7 +6,9 @@ const axios = require('axios');
 const { Client, GatewayIntentBits } = require('discord.js');
 const cors = require('cors'); 
 require('dotenv').config();
-const cron = require('node-cron');
+const Redis = require('ioredis');
+
+const redis = new Redis('rediss://red-cu1egud2ng1s73ebc2hg:kKHb8DsqAP2c9dRQ9yZT4gwfp671JrUq@oregon-redis.render.com:6379');
 
 
 // Configurar o app Express
@@ -93,8 +95,7 @@ app.post('/upload-pdf', async (req, res) => {
 
 async function fetchAndSendOnlinePlayers() {
   const discordClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
-  const discordToken = process.env.DISCORD_API_KEY;; // Replace with your Discord bot token
-  const discordChannelId = '1324898801776857199'; // Replace with your Discord channel ID
+  const discordToken = process.env.DISCORD_API_KEY;
 
   discordClient.once('ready', () => {
     console.log('Discord bot is ready!');
@@ -103,32 +104,107 @@ async function fetchAndSendOnlinePlayers() {
   discordClient.login(discordToken);
 
   try {
-    // const playersToCheck = ['Frost Club', 'Pablo Alencar', 'Cheloko Rawexp']; // Replace with actual player names
     const response = await axios.get(`https://api.tibiadata.com/v4/guild/Eagle Eye`);
     const onlinePlayers = response.data.guild.members;
     const TibiaClass = { 'Elite Knight': '🛡️', 'Master Sorcerer': '🔥' , 'Royal Paladin': '🏹' , 'Elder Druid': '🌱' }; 
     const newOnline = [];
+    const newDeaths = []
     onlinePlayers.sort((a, b) => b.level - a.level);
 
-    for (const player of onlinePlayers) {
-      if (player.level < 1000 && player.status === 'online') {
+    const playerPromises = onlinePlayers.map(async (player) => {
+      const deaths = await getCharacterDeaths(player.name);
 
-          newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
+      if(deaths.length){
+        for (const death of deaths) {
+          await newDeaths.push(death)
+        }
       }
-    }
 
-    // Send message to Discord for each new online player
-    const channel = await discordClient.channels.fetch(discordChannelId);
-    // for (const player of newOnline) {
-    await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1000**`);
+      if (player.level < 1000 && player.status === 'online') {
+        await newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
+      }
+    });
 
-    const chunkSize = 45;
-    for (let i = 0; i < newOnline.length; i += chunkSize) {
-      const chunk = newOnline.slice(i, i + chunkSize);
-      await channel.send("```" + `${chunk.join(' ')}` + "```");
-    }
+    await Promise.all(playerPromises);
+
+    sendDiscordOnlineMessage(newOnline, discordClient)
+    await sendDiscordDeathsMessage(newDeaths, discordClient)
   } catch (error) {
     console.error('Error fetching character data:', error);
+  }
+}
+
+async function sendDiscordOnlineMessage(newOnline, discordClient) {
+  const discordChannelId = '1324898801776857199';
+
+  const channel = await discordClient.channels.fetch(discordChannelId);
+  await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1000**`);
+
+  const chunkSize = 45;
+  for (let i = 0; i < newOnline.length; i += chunkSize) {
+    const chunk = newOnline.slice(i, i + chunkSize);
+    await channel.send("```" + `${chunk.join(' ')}` + "```");
+  }
+}
+
+async function sendDiscordDeathsMessage(dominadosMortos, discordClient) {
+  const discordChannelId = '1325235117136023552'; // Replace with your Discord channel ID
+
+  const channel = await discordClient.channels.fetch(discordChannelId);
+  const playerPromises = dominadosMortos.map(async (death) => {
+    
+    await channel.send(`\n### 🚨🚨🚨 ATENÇÃO!! 1 minuto de silencio para: 🚨🚨🚨\n👼 Player: **${death.playerName}**\n🎯 Level: **${death.level}** \n🏷️ Reason: **${death.reason}** \n⏰ Time: **${death.time}**\n-# 🪦 **RIP**! Sentiremos sempre sua falta!`);
+  });
+
+  await Promise.all(playerPromises);
+
+
+  
+}
+
+
+app.get('/character/:name', async (req, res) => {
+  const characterName = req.params.name;
+  
+  try {
+    const retorno = await getCharacterDeaths(characterName, res);    
+    res.json(retorno);
+  } catch (error) {
+    console.error('Error fetching character data', error);
+    res.status(500).send('Error fetching character data');
+  }
+});
+
+async function getCharacterDeaths(characterName){
+  try {
+    const response = await axios.get(`https://api.tibiadata.com/v4/character/${encodeURIComponent(characterName)}`);
+    const characterData = response.data.character;
+    if(!characterData.deaths || characterData.deaths.length === 0){
+      return [];
+    }
+
+    const deaths = characterData.deaths;
+    // List deaths
+    const deathList = []
+
+    for (const death of deaths) {
+      const ISODate = new Date(new Date(death.time).getTime() - 3 * 60 * 60 * 1000).toISOString()
+      const deathKey = `death:${characterName}:${ISODate}`;
+      const existingDeath = await redis.exists(deathKey);
+      if (!existingDeath) {
+        const deathFormatted = await {
+          playerName: characterName,
+          time: ISODate,
+          level: death.level,
+          reason: death.reason,
+        }
+        // await deathList.push(deathFormatted)
+        await redis.hmset(deathKey, deathFormatted);
+      }
+    }
+    return deathList;
+  } catch (error) {
+    console.error(`Error fetching character data: ${characterName}`, error);
   }
 }
 
