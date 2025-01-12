@@ -148,7 +148,7 @@ async function sendDiscordOnlineMessage(newOnline, discordClient) {
   const discordChannelId = '1324898801776857199';
 
   const channel = await discordClient.channels.fetch(discordChannelId);
-  await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Membros abaixo do **LVL 1000**`);
+  await channel.send(`\n ### Dominados ~~Eagles~~ Online  (${newOnline.length}):  \n-# Todos os membros da guild Eagle Online`);
 
   const chunkSize = 45;
   for (let i = 0; i < newOnline.length; i += chunkSize) {
