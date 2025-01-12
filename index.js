@@ -199,13 +199,14 @@ async function getCharacterDeaths(characterName){
           level: death.level,
           reason: death.reason,
         }
-        // await deathList.push(deathFormatted)
+        await deathList.push(deathFormatted)
         await redis.hmset(deathKey, deathFormatted);
       }
     }
     return deathList;
   } catch (error) {
-    console.error(`Error fetching character data: ${characterName}`, error);
+    console.error('Error fetching character data:', error.message);
+    console.error('Error details:', error.response ? error.response.data : error);
   }
 }
 
