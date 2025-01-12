@@ -93,6 +93,10 @@ app.post('/upload-pdf', async (req, res) => {
     }
 });
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function fetchAndSendOnlinePlayers() {
   const discordClient = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
   const discordToken = process.env.DISCORD_API_KEY;
@@ -108,27 +112,32 @@ async function fetchAndSendOnlinePlayers() {
     const onlinePlayers = response.data.guild.members;
     const TibiaClass = { 'Elite Knight': '🛡️', 'Master Sorcerer': '🔥' , 'Royal Paladin': '🏹' , 'Elder Druid': '🌱' }; 
     const newOnline = [];
-    const newDeaths = []
+    const newDeaths = [];
     onlinePlayers.sort((a, b) => b.level - a.level);
 
-    const playerPromises = onlinePlayers.map(async (player) => {
-      const deaths = await getCharacterDeaths(player.name);
+    const chunkSize = 20;
+    for (let i = 0; i < onlinePlayers.length; i += chunkSize) {
+      const chunk = onlinePlayers.slice(i, i + chunkSize);
 
-      if(deaths.length){
-        for (const death of deaths) {
-          await newDeaths.push(death)
+      const playerPromises = chunk.map(async (player) => {
+        const deaths = await getCharacterDeaths(player.name);
+
+        if (deaths.length) {
+          for (const death of deaths) {
+            newDeaths.push(death);
+          }
         }
-      }
 
-      if (player.level < 1000 && player.status === 'online') {
-        await newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
-      }
-    });
+        if (player.level < 1000 && player.status === 'online') {
+          newOnline.push(`\n${TibiaClass[player.vocation]} ${player.name} (${player.level})`);
+        }
+      });
 
-    await Promise.all(playerPromises);
+      await Promise.all(playerPromises);
+    }
 
-    sendDiscordOnlineMessage(newOnline, discordClient)
-    await sendDiscordDeathsMessage(newDeaths, discordClient)
+    sendDiscordOnlineMessage(newOnline, discordClient);
+    await sendDiscordDeathsMessage(newDeaths, discordClient);
   } catch (error) {
     console.error('Error fetching character data:', error.message);
     console.error('Error details:', error.response ? error.response.data : error);
@@ -190,7 +199,7 @@ async function getCharacterDeaths(characterName){
 
     for (const death of deaths) {
       const ISODate = new Date(new Date(death.time).getTime() - 3 * 60 * 60 * 1000).toISOString()
-      const deathKey = `death:${characterName}:${ISODate}`;
+      const deathKey = `${characterName}:${ISODate}`;
       const existingDeath = await redis.exists(deathKey);
       if (!existingDeath) {
         const deathFormatted = await {
@@ -199,7 +208,7 @@ async function getCharacterDeaths(characterName){
           level: death.level,
           reason: death.reason,
         }
-        await deathList.push(deathFormatted)
+        // await deathList.push(deathFormatted)
         await redis.hmset(deathKey, deathFormatted);
       }
     }
